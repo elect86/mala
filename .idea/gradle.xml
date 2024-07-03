@@ -4,10 +4,118 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/../djl" name="djl">
+                <projects>
+                  <project path="$PROJECT_DIR$/../djl" />
+                  <project path="$PROJECT_DIR$/../djl/api" />
+                  <project path="$PROJECT_DIR$/../djl/basicdataset" />
+                  <project path="$PROJECT_DIR$/../djl/djl-zero" />
+                  <project path="$PROJECT_DIR$/../djl/engines" />
+                  <project path="$PROJECT_DIR$/../djl/engines/llama" />
+                  <project path="$PROJECT_DIR$/../djl/engines/ml" />
+                  <project path="$PROJECT_DIR$/../djl/engines/ml/lightgbm" />
+                  <project path="$PROJECT_DIR$/../djl/engines/ml/xgboost" />
+                  <project path="$PROJECT_DIR$/../djl/engines/mxnet" />
+                  <project path="$PROJECT_DIR$/../djl/engines/mxnet/jnarator" />
+                  <project path="$PROJECT_DIR$/../djl/engines/mxnet/mxnet-engine" />
+                  <project path="$PROJECT_DIR$/../djl/engines/mxnet/mxnet-model-zoo" />
+                  <project path="$PROJECT_DIR$/../djl/engines/mxnet/native" />
+                  <project path="$PROJECT_DIR$/../djl/engines/onnxruntime" />
+                  <project path="$PROJECT_DIR$/../djl/engines/onnxruntime/onnxruntime-android" />
+                  <project path="$PROJECT_DIR$/../djl/engines/onnxruntime/onnxruntime-engine" />
+                  <project path="$PROJECT_DIR$/../djl/engines/pytorch" />
+                  <project path="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-engine" />
+                  <project path="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-jni" />
+                  <project path="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-model-zoo" />
+                  <project path="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-native" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorflow" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-api" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-engine" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-model-zoo" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-native" />
+                  <project path="$PROJECT_DIR$/../djl/engines/tensorrt" />
+                  <project path="$PROJECT_DIR$/../djl/examples" />
+                  <project path="$PROJECT_DIR$/../djl/extensions" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/audio" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/aws-ai" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/fasttext" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/hadoop" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/opencv" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/sentencepiece" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/tablesaw" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/timeseries" />
+                  <project path="$PROJECT_DIR$/../djl/extensions/tokenizers" />
+                  <project path="$PROJECT_DIR$/../djl/integration" />
+                  <project path="$PROJECT_DIR$/../djl/jacoco" />
+                  <project path="$PROJECT_DIR$/../djl/model-zoo" />
+                  <project path="$PROJECT_DIR$/../djl/testing" />
+                </projects>
+              </build>
+              <build path="$PROJECT_DIR$/../djl/buildSrc" name="buildSrc">
+                <projects>
+                  <project path="$PROJECT_DIR$/../djl/buildSrc" />
+                </projects>
+              </build>
+              <build path="$PROJECT_DIR$/../djl.kt" name="djl.kt">
+                <projects>
+                  <project path="$PROJECT_DIR$/../djl.kt" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleHome" value="" />
         <option name="modules">
           <set>
+            <option value="$PROJECT_DIR$/../djl" />
+            <option value="$PROJECT_DIR$/../djl.kt" />
+            <option value="$PROJECT_DIR$/../djl/api" />
+            <option value="$PROJECT_DIR$/../djl/basicdataset" />
+            <option value="$PROJECT_DIR$/../djl/buildSrc" />
+            <option value="$PROJECT_DIR$/../djl/djl-zero" />
+            <option value="$PROJECT_DIR$/../djl/engines" />
+            <option value="$PROJECT_DIR$/../djl/engines/llama" />
+            <option value="$PROJECT_DIR$/../djl/engines/ml" />
+            <option value="$PROJECT_DIR$/../djl/engines/ml/lightgbm" />
+            <option value="$PROJECT_DIR$/../djl/engines/ml/xgboost" />
+            <option value="$PROJECT_DIR$/../djl/engines/mxnet" />
+            <option value="$PROJECT_DIR$/../djl/engines/mxnet/jnarator" />
+            <option value="$PROJECT_DIR$/../djl/engines/mxnet/mxnet-engine" />
+            <option value="$PROJECT_DIR$/../djl/engines/mxnet/mxnet-model-zoo" />
+            <option value="$PROJECT_DIR$/../djl/engines/mxnet/native" />
+            <option value="$PROJECT_DIR$/../djl/engines/onnxruntime" />
+            <option value="$PROJECT_DIR$/../djl/engines/onnxruntime/onnxruntime-android" />
+            <option value="$PROJECT_DIR$/../djl/engines/onnxruntime/onnxruntime-engine" />
+            <option value="$PROJECT_DIR$/../djl/engines/pytorch" />
+            <option value="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-engine" />
+            <option value="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-jni" />
+            <option value="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-model-zoo" />
+            <option value="$PROJECT_DIR$/../djl/engines/pytorch/pytorch-native" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorflow" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-api" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-engine" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-model-zoo" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorflow/tensorflow-native" />
+            <option value="$PROJECT_DIR$/../djl/engines/tensorrt" />
+            <option value="$PROJECT_DIR$/../djl/examples" />
+            <option value="$PROJECT_DIR$/../djl/extensions" />
+            <option value="$PROJECT_DIR$/../djl/extensions/audio" />
+            <option value="$PROJECT_DIR$/../djl/extensions/aws-ai" />
+            <option value="$PROJECT_DIR$/../djl/extensions/fasttext" />
+            <option value="$PROJECT_DIR$/../djl/extensions/hadoop" />
+            <option value="$PROJECT_DIR$/../djl/extensions/opencv" />
+            <option value="$PROJECT_DIR$/../djl/extensions/sentencepiece" />
+            <option value="$PROJECT_DIR$/../djl/extensions/tablesaw" />
+            <option value="$PROJECT_DIR$/../djl/extensions/timeseries" />
+            <option value="$PROJECT_DIR$/../djl/extensions/tokenizers" />
+            <option value="$PROJECT_DIR$/../djl/integration" />
+            <option value="$PROJECT_DIR$/../djl/jacoco" />
+            <option value="$PROJECT_DIR$/../djl/model-zoo" />
+            <option value="$PROJECT_DIR$/../djl/testing" />
             <option value="$PROJECT_DIR$" />
           </set>
         </option>

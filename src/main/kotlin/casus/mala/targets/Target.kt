@@ -59,10 +59,10 @@ abstract class Target(paramsInterface: ParametersInterface): PhysicalData(params
 //    # Local grid and parallelization info for distributed inference.
 //    self.local_grid = None
 //    self.y_planes = None
-//
-//    # Control whether target data will be saved.
-//    # Can be important for I/O applications.
-//    self.save_target_data = True
+
+    // Control whether target data will be saved.
+    // Can be important for I/O applications.
+    var saveTargetData = true
 
     /** Get dimension of this target if used as feature in ML. */
     abstract val feaureSize: Int
