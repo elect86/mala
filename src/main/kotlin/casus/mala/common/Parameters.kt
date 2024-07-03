@@ -1,6 +1,9 @@
 package casus.mala.common
 
+import casus.mala.dataHandling.DataHandler
+import casus.mala.dataHandling.Snapshot
 import java.io.File
+import kotlin.properties.Delegates
 
 fun parameters(init: Parameters.() -> Unit) = Parameters().apply(init)
 
@@ -9,11 +12,11 @@ class Parameters: ParametersInterface {
     var comment = ""
 
     // Parameters subobjects.
-    val network = Network()
+    val network = ParametersNetwork()
     val descriptors = Descriptors()
     val targets = Targets()
     val data = Data()
-    val running = Running()
+    val running = ParametersRunning()
 //    self.hyperparameters = ParametersHyperparameterOptimization()
 //    self.datageneration = ParametersDataGeneration()
 
@@ -35,9 +38,9 @@ class Parameters: ParametersInterface {
     fun data(init: Data.() -> Unit) = data.apply(init)
 
     /** Parameters necessary for loading and preprocessing data. */
-    class Data {
+    class Data: ParametersBase() {
         /** A list of all added snapshots. */
-        val snapshotDirectoriesList = listOf<File>()
+        val snapshotDirectoriesList = ArrayList<Snapshot>()
 
         /** Specify how the data for validation, test and training is split. Currently, the only supported option
          *  is [Splitting.bySnapshot], which splits the data by snapshot boundaries. It is also the default. */
@@ -81,43 +84,7 @@ class Parameters: ParametersInterface {
         `feature wise normal`
     }
 
-    fun network(init: Network.() -> Unit) = network.apply(init)
-
-    /** Parameters necessary for constructing a neural network. */
-    class Network {
-        /** Type of the neural network that will be used. */
-        var nn = Nn.`feed-forward`
-
-        /**  A list of integers detailing the sizes of the layer of the neural network. Please note that the input layer
-         *  is included therein. Default: [10,10,10] */
-        val layerSizes = IntArray(3) { 10 }
-
-        /** A list of strings detailing the activation functions to be used by the neural network. If the dimension of
-         * [layerActivations] is smaller than the dimension of layer_sizes-1, than the first entry is used for all layers. */
-        var layerActivations = listOf(Activation.Sigmoid)
-
-        /** Loss function for the neural network */
-        var lossFunction = LossFunction.mse
-
-        /** for LSTM/Gru + Transformer
-         *  Number of hidden layers to be used in lstm or gru or transformer nets */
-        var numHiddenLayers = 1
-
-        /** for LSTM/Gru
-         *  If True hidden and cell state is assigned to zeros for LSTM Network. false will keep the hidden state active */
-        var noHiddenState = false
-
-        /** Sets lstm network size based on bidirectional or just one direction */
-        var bidirection = false
-
-        /** for transformer net
-         *  Dropout rate for transformer net
-         *  0.0 ≤ dropout ≤ 1.0 */
-        var dropout = 0.1f
-
-        /** Number of heads to be used in Multi head attention network. This should be a divisor of input dimension */
-        var numHeads = 10
-    }
+    fun network(init: ParametersNetwork.() -> Unit) = network.apply(init)
 
     enum class Nn { `feed-forward`, transformer, lstm, gru }
     enum class Activation { Sigmoid, ReLU, LeakyReLU }
@@ -126,101 +93,7 @@ class Parameters: ParametersInterface {
         mse
     }
 
-    fun running(init: Running.() -> Unit) = running.apply(init)
-
-    /** Parameters needed for network runs (train, test or inference).
-     *
-     *  Some of these parameters only apply to either the train or test or inference case. */
-    class Running {
-        /** Training type to be used */
-        var training = Training.SGD
-
-        /** Learning rate for chosen optimization algorithm. Default: 0.5. */
-        var learningRate = 0.5f
-
-        /** Maximum number of epochs to train for. Default: 100. */
-        var maxNumberEpochs = 100
-        var verbosity = true
-
-        /** Size of the mini batch for the optimization algorihm. Default: 10. */
-        var miniBatchSize = 10
-
-        /** Weight decay for regularization. Always refers to L2 regularization. Default: 0f. */
-        var weightDecay = 0f
-
-        /** Number of epochs the validation accuracy is allowed to not improve by at least [earlyStoppingThreshold],
-         *  before we terminate. If 0, no early stopping is performed. Default: 0. */
-        var earlyStoppingEpochs = 0
-
-        /** Minimum fractional reduction in validation loss required to avoid early stopping, e.g. a value of 0.05 means
-         *  that validation loss must decrease by 5% within early_stopping_epochs epochs or the training will be stopped
-         *  early. More explicitly, validation_loss < validation_loss_old * (1-early_stopping_threshold) or the patience
-         *  counter goes up.
-         *  Default: 0. Numbers bigger than 0 can make early stopping very aggressive,
-         *  while numbers less than 0 make the trainer very forgiving of loss increase. */
-        var earlyStoppingThreshold = 0
-
-        /** Learning rate scheduler to be used. If not [RateScheduler.None], an instance of the corresponding pytorch
-         *  class will be used to manage the learning rate schedule. */
-        var learningRateScheduler = RateScheduler.None
-
-        /** Decay rate to be used in the learning rate (if the chosen scheduler supports that). Default: 0.1 */
-        var learningRateDecay = 0.1f
-
-        /** Patience parameter used in the learning rate schedule (how long the validation loss has to plateau before
-         *  the schedule takes effect). Default: 0. */
-        var learningRatePatience = 0
-
-        /** If True and horovod is used, horovod compression will be used for allreduce communication.
-         *  This can improve performance. */
-        var useCompression = false
-
-        /** Number of workers to be used for data loading. */
-        var numWorkers = 0
-
-        /** If True, the training data will be shuffled in between epochs. If lazy loading is selected, then this
-         *  shuffling will be done on a "by snapshot" basis. */
-        var useShufflingForSamplers = true
-
-        /** If not 0, checkpoint files will be saved after eac checkpoints_each_epoch epoch. */
-        var checkpointsEachEpoch = 0
-
-        /** Name used for the checkpoints. Using this, multiple runs can be performed in the same directory. */
-        var checkpointName = "checkpoint_mala"
-
-        /** If True then Tensorboard is activated for visualisation
-        case 0: No tensorboard activated
-        case 1: tensorboard activated with Loss and learning rate
-        case 2; additonally weights and biases and gradient */
-        var visualisation = 0
-
-        /** Name of the folder that visualization files will be saved to. */
-        lateinit var visualisationDir: File // = os.path.join(".", "mala_logging")
-
-        /** If True, then upon creating visualization files, these will be saved in a subfolder of [visualisationDir]
-         *  labelled with the starting date of the visualization, to avoid having to change input scripts often. */
-        var visualisationDirAppendDate = true
-
-        var duringTrainingMetric = TrainingMetric.ldos
-
-        var afterBeforeTrainingMetric = TrainingMetric.ldos
-
-        /** List holding the grid to be used for inference in the form of [x,y,z]. */
-        var inferenceDataGrid = IntArray(3)
-
-        /** If True, mixed precision computation (via AMP) will be used. */
-        var useMixedPrecision = false
-
-        var useGraphs = false
-
-        /** Determines how often detailed performance info is printed during training
-         *  (only has an effect if the verbosity is high enough). */
-        var trainingReportFrequency = 1000
-
-        /** List with two entries determining with which batch/iteration number the CUDA profiler will start and stop
-         *  profiling. Please note that this option only holds significance if the nsys profiler is used. */
-        var profilerRange: IntArray? = null  // [1000, 2000]
-    }
+    fun running(init: ParametersRunning.() -> Unit) = running.apply(init)
 
     enum class Training {
         /** Stochastic gradient descent */
@@ -301,8 +174,20 @@ class Parameters: ParametersInterface {
 
     fun descriptors(init: Descriptors.() -> Unit) = descriptors.apply(init)
 
+    val dataHandler by lazy { DataHandler(this) }
+
+    open class Base {
+        val configuration = Configuration()
+        class Configuration(var gpu: Boolean = false,
+                            var horovod: Boolean = false,
+                            var mpi: Boolean = false,
+                            var device: String = "cpu",
+                            var openpmdConfiguration: Map<String, Any> = emptyMap(),
+                            var openpmdGranularity: Int = 1,
+                            var lammps: Boolean = true)
+    }
     /** Parameters necessary for calculating/parsing input descriptors. */
-    class Descriptors {
+    class Descriptors: Base() {
 
         /** Type of descriptors that is used to represent the atomic fingerprint. */
         var type = Type.Bispectrum
@@ -329,7 +214,11 @@ class Parameters: ParametersInterface {
          *  5, so default value for twojmax is 10. */
         var bispectrumTwojmax = 10
 
-        var bispectrumCutoff = 4.67637f
+        var bispectrumCutoff: Float = 4.67637f
+            set(value) {
+                field = value
+                atomicDensityCutoff = value
+            }
         var bispectrumSwitchflag = 1
 
         // Everything pertaining to the atomic density.

@@ -1,5 +1,6 @@
 package casus.mala.targets
 
+import ai.djl.ndarray.NDArray
 import casus.mala.common.ParametersInterface
 
 /** Postprocessing / parsing functions for the local density of states. */
@@ -7,6 +8,13 @@ class LDOS(paramsInterface: ParametersInterface): Target(paramsInterface) {
 
     override val dataName = "LDOS"
     override val feaureSize = parameters.ldosGridsize
+
+    override val featureMask: Int
+        get() = TODO("Not yet implemented")
+
+    override fun processLoadedArray(array: NDArray, units: String?) {
+        TODO("Not yet implemented")
+    }
 
 //    @classmethod
 //    def from_numpy_file(cls, params, path, units="1/(eV*A^3)"):
