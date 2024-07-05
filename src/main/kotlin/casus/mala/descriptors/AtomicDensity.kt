@@ -8,7 +8,7 @@ class AtomicDensity(parameters: Parameters) : Descriptor(parameters) {
         TODO("Not yet implemented")
     }
 
-    override fun calculate(outDir: File, kwargs: Map<String, Any?>): Number {
+    override fun calculate(outDir: File, kwargs: Map<String, Any>): Number {
         TODO("Not yet implemented")
     }
 

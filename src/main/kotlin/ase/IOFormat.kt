@@ -7,9 +7,7 @@ data class IOFormat(val name: String,
                     val encoding: String? = null) {
 
     init {
-        check(code.length == 2)
-        check(code[0] in listOf('+', '1'))
-        check(code[1] in listOf('B', 'F', 'S'))
+        check(code.length == 2 && code[0] in "+1" && code[1] in "BFS")
     }
 
     // (To be set by define_io_format())

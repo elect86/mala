@@ -165,7 +165,7 @@ class DataConverter(val parametersFull: Parameters,
                          namingScheme: String = "ELEM_snapshot*.npy",
                          startsAt: Int = 0,
                          fileBasedCommunication: Boolean = false,
-                         descriptorCalculationKwargs: MutableMap<String, Any?> = mutableMapOf(),
+                         descriptorCalculationKwargs: MutableMap<String, Any> = mutableMapOf(),
                          targetCalculatorKwargs: MutableMap<String, String> = mutableMapOf(),
                          useFp64: Boolean = false) {
 
@@ -378,7 +378,7 @@ class DataConverter(val parametersFull: Parameters,
      *             Numpy array containing the preprocessed outputs.
      */
     private fun convertSingleSnapshot(snapshotNumber: Int,
-                                      descriptorCalculationKwargs: MutableMap<String, Any?>,
+                                      descriptorCalculationKwargs: MutableMap<String, Any>,
                                       targetCalculatorKwargs: MutableMap<String, String>,
                                       inputPath: File? = null,
                                       outputPath: File? = null,
@@ -395,7 +395,7 @@ class DataConverter(val parametersFull: Parameters,
         // Parse and/or calculate the input descriptors.
         when (description.input) {
             DescriptorInputType.`espresso-out` -> {
-                descriptorCalculationKwargs["units"] = originalUnits.first
+                originalUnits.first?.let { descriptorCalculationKwargs["units"] = it }
                 descriptorCalculationKwargs["use_fp64"] = useFp64
 
                 /*tmp_input, local_size =*/ descriptorCalculator.calculateFromQeOut(snapshot.input, kwargs = descriptorCalculationKwargs)

@@ -1,14 +1,11 @@
 package casus.mala.descriptors
 
-import ai.djl.ndarray.NDArray
-import ase.cdist
-import ase.factorial
-import ase.now
+import ase.*
+import ase.io.prod
 import casus.mala.common.Parameters
+import casus.mala.dataHandling.div
 import java.io.File
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sqrt
+import kotlin.math.*
 
 /** Class for calculation and parsing of bispectrum descriptors. */
 class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
@@ -26,7 +23,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
 
     private lateinit var cglist: FloatArray
 
-    //self.__index_u_one_initialized = None
+    private var indexUOneInitialized: IntArray? = null
     private val indexUFull = ArrayList<Int>()
     private val indexUSymmetryPos = ArrayList<Int>()
     private val indexUSymmetryNeg = ArrayList<Int>()
@@ -36,17 +33,18 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
     private val rootpqFull1 = ArrayList<Float>()
     private val rootpqFull2 = ArrayList<Float>()
 
-    private val indexZU1r = ArrayList<Int>()
-    private val indexZU1i = ArrayList<Int>()
-    private val indexZU2r = ArrayList<Int>()
-    private val indexZU2i = ArrayList<Int>()
-    private val indexZIcga = ArrayList<Int>()
-    private val indexZIcgb = ArrayList<Int>()
-    private val indexZJjz = ArrayList<Int>()
+    private lateinit var indexZU1r: IntArray
+    private lateinit var indexZU1i: IntArray
+    private lateinit var indexZU2r: IntArray
+    private lateinit var indexZU2i: IntArray
+    private lateinit var indexZIcga: IntArray
+    private lateinit var indexZIcgb: IntArray
+    private lateinit var indexZJjz: IntArray
     private lateinit var indexZBlock: Array<Array<IntArray>>
 
-    var indexBMax = 0
-    //self.__index_b = None
+    private var indexBMax = 0
+
+    private lateinit var indexB: Array<BIndices>
     var rMin0 = 0f
     var rFac0 = 0f
     var bZeroFlag = false
@@ -56,10 +54,11 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
     var numberElements = 0
     var wSelf = 0f
 
-    fun convertUnits(array: NDArray): Nothing = TODO() // convertUnits (array, null)
+    //    fun convertUnits(array: NDArray): Nothing = TODO() // convertUnits (array, null)
 
-    override fun calculate(outDir: File, kwargs: Map<String, Any?>): Number = when {
-        else -> calculate(kwargs)
+    override fun calculate(outDir: File, kwargs: Map<String, Any>): Number = when {
+        //        else -> calculateKotlin(kwargs)
+        else -> calculateLammps(outDir, kwargs) as Number
         //        parameters.configuration.lammps
         //        if find_spec("lammps") is None:
         //        printout(
@@ -72,6 +71,36 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         //        else:
         //        return self.__calculate_python(** kwargs)
 
+    }
+
+    /**
+     *         Perform bispectrum calculation using LAMMPS.
+     *
+     *         Creates a LAMMPS instance with appropriate call parameters and uses
+     *         it for the calculation.
+     */
+    private fun calculateLammps(outdir: File, kwargs: Map<String, Any>): Number {
+        // For version compatibility; older lammps versions(the serial version
+        // we still use on some machines) have these constants as part of the
+        // general LAMMPS import.
+        val useFp64 = kwargs["use_fp64"] as Boolean? ?: false
+        val keepLogs = kwargs["keep_logs"] as Boolean? ?: false
+
+        val lammpsFormat = "lammps-data"
+        lammpsTemporaryInput = File.createTempFile("lammps_input_", ".tmp")
+
+        ase.io.write(lammpsTemporaryInput!!, atoms, lammpsFormat)
+
+        val (nx, ny, nz) = gridDimensions
+
+        // Create LAMMPS instance.
+        val lammpsDict: MutableMap<String, Any> = mutableMapOf("twojmax" to parameters.bispectrumTwojmax,
+                                                               "rcutfac" to parameters.bispectrumCutoff)
+
+        lammpsTemporaryLog = File.createTempFile("lammps_bgrid_log_", ".tmp")
+
+        val lmp = setupLammps(nx, ny, nz, lammpsDict)
+        TODO()
     }
 
     /**
@@ -94,18 +123,18 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
      * hard codes them. Compared to the LAMMPS implementation, some
      * essentially never used options are not maintained/optimized.
      */
-    private fun calculate(kwargs: Map<String, Any?>): Number {
+    private fun calculateKotlin(kwargs: Map<String, Any?>): Number {
 
         println("Using kotlin for descriptor calculation. The resulting calculation will be slow for large systems.")
 
         // The entire bispectrum calculation may be extensively profiled.
-        val profileCalculation = kwargs["profile_calculation"] as Boolean? ?: false
+        val profileCalculation = true //kwargs["profile_calculation"] as Boolean? ?: false
 
-        var timingDistances = 0
-        var timingUi = 0
-        var timingZi = 0
-        var timingBi = 0
-        var timingGridpoints = 0
+        var timingDistances = 0f
+        var timingUi = 0f
+        var timingZi = 0f
+        var timingBi = 0f
+        var timingGridpoints = 0f
 
         // Set up the array holding the bispectrum descriptors.
         val ncoeff = parameters.bispectrumTwojmax.let { (it + 2) * (it + 3) * (it + 4) }
@@ -165,7 +194,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         // bispectrum descriptor calculation to be used at scale,
         // the best way would potentially be via self-maintained
         // C++-functions.
-        //
+
         //#######
         // Initialize index arrays.
         //
@@ -182,7 +211,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
             for (y in 0..<gridDimensions[1])
                 for (z in 0..<gridDimensions[2]) {
                     // Compute the grid point.
-                    val tGrid = now
+                    val tGrid = if (profileCalculation) now else 0f
                     val coord = gridToCoord(intArrayOf(x, y, z))
                     for (c in 0..2)
                         bispectrumNp[x][y][z][c] = coord[c]
@@ -194,15 +223,68 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                     // targeted cutoff are calculated.
                     //#######
 
-                    val t0 = now
-                    val distances = np.squeeze(
-                        distance.cdist(
-                            [bispectrumNp[x][y][z].cdist(allAtoms)
-                    )
-                    )
+                    var t0 = if (profileCalculation) now else 0f
+                    val distances = bispectrumNp[x][y][z] cdist allAtoms
+                    val indices = buildList { for (i in distances.indices) if (distances[i] < parameters.bispectrumCutoff) add(i) }
+                    val distancesCutoff = FloatArray(indices.size) { abs(distances[indices[it]]) }
+                    val atomsCutoff = Array(indices.size) { allAtoms[indices[it]] }
+                    val nrAtoms = atomsCutoff.size
+                    if (profileCalculation) timingDistances += now - t0
+
+                    //#######
+                    // Compute ui.
+                    //
+                    // This calculates the expansion coefficients of the
+                    // hyperspherical harmonics (usually referred to as ui).
+                    //#######
+
+                    if (profileCalculation) t0 = now
+                    val (ulisttotR, ulisttotI) = computeUi(nrAtoms,
+                                                           atomsCutoff,
+                                                           distancesCutoff,
+                                                           bispectrumNp[x][y][z])
+                    if (profileCalculation) timingUi += now - t0
+
+                    //#######
+                    // Compute zi.
+                    //
+                    // This calculates the bispectrum components through
+                    // triple scalar products/Clebsch-Gordan products.
+                    //#######
+
+                    if (profileCalculation) t0 = now
+                    val (zlistR, zlistI) = computeZi(ulisttotR, ulisttotI)
+                    if (profileCalculation) timingZi += now - t0
+
+                    //#######
+                    // Compute the bispectrum descriptors itself.
+                    //
+                    // This essentially just extracts the descriptors from
+                    // the expansion coeffcients.
+                    //#######
+                    if (profileCalculation) t0 = now
+                    computeBi(ulisttotR, ulisttotI, zlistR, zlistI).copyInto(bispectrumNp[x][y][z], destinationOffset = 3)
+                    if (profileCalculation) {
+                        timingGridpoints += now - tGrid
+                        timingBi += now - t0
+                    }
                 }
 
-        TODO()
+        if (profileCalculation) {
+            val timingTotal = now - tBegin
+            val prod = gridDimensions.prod()
+            println("""
+                Python-based bispectrum descriptor calculation timing: 
+                Index matrix initialization $timingIndexInit]
+                Overall calculation time $timingTotal
+                Calculation time per gridpoint [s/gridpoint] ${timingGridpoints / prod}
+                Timing contributions per gridpoint:
+                Distance matrix [s/gridpoint] ${timingDistances / prod}
+                Compute ui [s/gridpoint] ${timingUi / prod}
+                Compute zi [s/gridpoint] ${timingZi / prod}
+                Compute bi [s/gridpoint] ${timingBi / prod}""".trimIndent())
+        }
+        return 3
     }
 
     /** Convert the units of a bispectrum descriptor.
@@ -267,8 +349,8 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         fun deltaCg(j1: Int, j2: Int, j: Int): Double {
             val sfaccg = ((j1 + j2 + j).floorDiv(2) + 1).factorial()
             return sqrt((j1 + j2 - j).floorDiv(2).factorial() *
-                        (j1 - j2 + j).floorDiv(2).factorial() *
-                        (-j1 + j2 + j).floorDiv(2).factorial() / sfaccg.toDouble())
+                                (j1 - j2 + j).floorDiv(2).factorial() *
+                                (-j1 + j2 + j).floorDiv(2).factorial() / sfaccg.toDouble())
         }
 
         //#######
@@ -294,7 +376,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         }
 
         // These are only for optimization purposes.
-        var indexUOneInitialized: IntArray? = null
+        indexUOneInitialized = null
         for (j in 0..parameters.bispectrumTwojmax) {
             val stop = when {
                 j < parameters.bispectrumTwojmax -> indexUBlock[j + 1]
@@ -303,7 +385,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
             val range = indexUBlock[j]..stop step j + 2
             val iterator = range.iterator()
             val array = IntArray(range.count()) { iterator.nextInt() }
-            indexUOneInitialized = if (indexUOneInitialized == null) array else indexUOneInitialized + array
+            indexUOneInitialized = indexUOneInitialized?.let { it + array } ?: array
         }
 
         for (j in 1..parameters.bispectrumTwojmax) {
@@ -316,10 +398,10 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                     rootpqFull2 += rootPqArray[ma + 1][j - mb]
                     indexUFull += jju
                     indexU1Full += jjup
-                    jju += 1
-                    jjup += 1
+                    jju++
+                    jjup++
                 }
-                jju += 1
+                jju++
             }
 
             var mbpar = 1
@@ -337,8 +419,8 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                         indexU1SymmetryNeg += jjup
                     }
                     mapar = -mapar
-                    jju += 1
-                    jjup -= 1
+                    jju++
+                    jjup--
                 }
                 mbpar = -mbpar
             }
@@ -418,30 +500,35 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                             val x = max(-(j - j2 + aa2).floorDiv(2), -(j - j1 - bb2).floorDiv(2))
                             val y = min((j1 - aa2).floorDiv(2), (j2 + bb2).floorDiv(2))
                             for (z in max(0, x)..min((j1 + j2 - j).floorDiv(2), y)) {
-                                val ifac = if (z % 2 != 0) -1 else 1
+                                val ifac = if (z % 2 != 0) -1f else 1f
                                 cgsum += ifac / (z.factorial() *
-                                                 ((j1 + j2 - j).floorDiv(2) - z).factorial() *
-                                                 ((j1 - aa2).floorDiv(2) - z).factorial() *
-                                                 ((j2 + bb2).floorDiv(2) - z).factorial() *
-                                                 ((j - j2 + aa2).floorDiv(2) + z).factorial() *
-                                                 ((j - j1 - bb2).floorDiv(2) + z).factorial())
+                                        ((j1 + j2 - j).floorDiv(2) - z).factorial() *
+                                        ((j1 - aa2).floorDiv(2) - z).factorial() *
+                                        ((j2 + bb2).floorDiv(2) - z).factorial() *
+                                        ((j - j2 + aa2).floorDiv(2) + z).factorial() *
+                                        ((j - j1 - bb2).floorDiv(2) + z).factorial())
                             }
                             val cc2 = 2 * m - j
                             val dcg = deltaCg(j1, j2, j)
                             val sfaccg = sqrt(((j1 + aa2).floorDiv(2).factorial() *
-                                               (j1 - aa2).floorDiv(2).factorial() *
-                                               (j2 + bb2).floorDiv(2).factorial() *
-                                               (j2 - bb2).floorDiv(2).factorial() *
-                                               (j + cc2).floorDiv(2).factorial() *
-                                               (j - cc2).floorDiv(2).factorial() * (j + 1)).toDouble())
+                                    (j1 - aa2).floorDiv(2).factorial() *
+                                    (j2 + bb2).floorDiv(2).factorial() *
+                                    (j2 - bb2).floorDiv(2).factorial() *
+                                    (j + cc2).floorDiv(2).factorial() *
+                                    (j - cc2).floorDiv(2).factorial() * (j + 1)).toDouble())
                             cglist[idxcgCount] = (cgsum * dcg * sfaccg).toFloat()
                             idxcgCount++
                         }
                     }
 
         // These are only for optimization purposes.
-        //        self.__index_z_icga = []
-        //        self.__index_z_icgb = []
+        val indexZU1r = ArrayList<Int>()
+        val indexZU1i = ArrayList<Int>()
+        val indexZU2r = ArrayList<Int>()
+        val indexZU2i = ArrayList<Int>()
+        val indexZIcga = ArrayList<Int>()
+        val indexZIcgb = ArrayList<Int>()
+        val indexZJjz = ArrayList<Int>()
         for (jjz in 0..<idxzMax) {
             val id = idxz[jjz]
             val j1 = id.j1
@@ -469,8 +556,8 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                     indexZU1i += jju1 + ma1
                     indexZU2r += jju2 + ma2
                     indexZU2i += jju2 + ma2
-                    ma1 += 1
-                    ma2 -= 1
+                    ma1++
+                    ma2--
                     icga += j2
                 }
                 jju1 += j1 + 1
@@ -478,6 +565,13 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                 icgb += j2
             }
         }
+        this.indexZU1r = indexZU1r.toIntArray()
+        this.indexZU1i = indexZU1i.toIntArray()
+        this.indexZU2r = indexZU2r.toIntArray()
+        this.indexZU2i = indexZU2i.toIntArray()
+        this.indexZIcga = indexZIcga.toIntArray()
+        this.indexZIcgb = indexZIcgb.toIntArray()
+        this.indexZJjz = indexZJjz.toIntArray()
 
         //#######
         // Indices for compute_bi.
@@ -492,7 +586,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                         idxbCount++
 
         indexBMax = idxbCount
-        val indexB = Array(indexBMax) { BIndices() }
+        indexB = Array(indexBMax) { BIndices() }
 
         idxbCount = 0
         for (j1 in 0..parameters.bispectrumTwojmax)
@@ -504,5 +598,273 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                         indexB[idxbCount].j = j
                         idxbCount++
                     }
+    }
+
+    /**
+     *         Compute ui.
+     *
+     *         This calculates the expansion coefficients of the
+     *         hyperspherical harmonics (usually referred to as ui).
+     *
+     *         FURTHER OPTIMIZATION: This originally was a huge nested for-loop.
+     *         By vectorizing over the atoms and pre-initializing a bunch of arrays,
+     *         a  massive amount of time could be saved. There is one principal
+     *         for-loop remaining - I have not found an easy way to optimize it out.
+     *         Also, I have not tried numba or some other just-in-time compilation,
+     *         may help.
+     */
+    private fun computeUi(nrAtoms: Int, atomsCutoff: Array<FloatArray>,
+                          distancesCutoff: FloatArray, grid: FloatArray): Pair<FloatArray, FloatArray> {
+
+        // Precompute and prepare ui stuff
+        val theta0 = FloatArray(nrAtoms) {
+            (distancesCutoff[it] - rMin0) * rFac0 * Math.PI.toFloat() / (parameters.bispectrumCutoff - rMin0)
+        }
+        val z0 = FloatArray(nrAtoms) { distancesCutoff[it] / tan(theta0[it]) }
+
+        val ulistRIj = Array(nrAtoms) { FloatArray(indexUMax) { if (it == 0) 1f else 0f } }
+        val ulistIIj = Array(nrAtoms) { FloatArray(indexUMax) }
+        val ulisttotR = FloatArray(indexUMax)
+        val ulisttotI = FloatArray(indexUMax)
+        val r0inv = FloatArray(nrAtoms) { 1f / sqrt(distancesCutoff[it] * distancesCutoff[it] + z0[it] * z0[it]) }
+        for (i in indexUOneInitialized!!) ulisttotR[i] = 1f
+        val distanceVector = Array(nrAtoms) { r -> FloatArray(3) { -1f * (atomsCutoff[r][it] - grid[it]) } }
+
+        // Cayley-Klein parameters for unit quaternion.
+        if (nrAtoms > 0) {
+            val aR = FloatArray(nrAtoms) { r0inv[it] * z0[it] }
+            val aI = FloatArray(nrAtoms) { -r0inv[it] * distanceVector[it][2] }
+            val bR = FloatArray(nrAtoms) { r0inv[it] * distanceVector[it][1] }
+            val bI = FloatArray(nrAtoms) { -r0inv[it] * distanceVector[it][0] }
+
+            // This encapsulates the compute_uarray function
+            var jju1 = 0
+            var jju2 = 0
+            var jju3 = 0
+            for (jjuOuter in 0..<indexUMax) {
+                if (jjuOuter in indexUFull) {
+                    for (i in 0..<nrAtoms) {
+                        var rootpq = rootpqFull1[jju1]
+                        val listR = ulistRIj[i]
+                        val listI = ulistIIj[i]
+                        val u = indexUFull[jju1]
+                        val u1 = indexU1Full[jju1]
+                        listR[u] += rootpq * (aR[i] * listR[u1] + aI[i] * listI[u1])
+                        listI[u] += rootpq * (aR[i] * listI[u1] - aI[i] * listR[u1])
+
+                        rootpq = rootpqFull2[jju1]
+                        listR[u + 1] = -1f * rootpq * (bR[i] * listR[u1] + bI[i] * listI[u1])
+                        listI[u + 1] = -1f * rootpq * (bR[i] * listI[u1] - bI[i] * listR[u1])
+                    }
+                    jju1++
+                }
+                if (jjuOuter in indexU1SymmetryPos) {
+                    for (i in 0..<nrAtoms) {
+                        val listR = ulistRIj[i]
+                        val listI = ulistIIj[i]
+                        val u = indexUSymmetryPos[jju2]
+                        val u1 = indexU1SymmetryPos[jju2]
+                        listR[u1] = listR[u]
+                        listI[u1] = -listI[u]
+                    }
+                    jju2++
+                }
+                if (jjuOuter in indexU1SymmetryNeg) {
+                    for (i in 0..<nrAtoms) {
+                        val listR = ulistRIj[i]
+                        val listI = ulistIIj[i]
+                        val u = indexUSymmetryNeg[jju3]
+                        val u1 = indexU1SymmetryNeg[jju3]
+                        listR[u1] = -listR[u]
+                        listI[u1] = listI[u]
+                    }
+                    jju3++
+                }
+            }
+
+            // This emulates add_uarraytot.
+            // First, we compute sfac.
+            val sfac = when {
+                parameters.bispectrumSwitchflag == 0 -> FloatArray(nrAtoms) { 1f }
+                else -> when {
+                    nrAtoms > 1 -> {
+                        val rcutfac = Math.PI.toFloat() / (parameters.bispectrumCutoff - rMin0)
+                        FloatArray(nrAtoms) {
+                            when {
+                                distancesCutoff[it] <= rMin0 -> 1f
+                                distancesCutoff[it] > parameters.bispectrumCutoff -> 0f
+                                else -> 0.5f * (cos((distancesCutoff[it] - rMin0) * rcutfac) + 1f)
+                            }
+                        }
+                    }
+                    else -> FloatArray(nrAtoms)
+                }
+            }
+
+            // sfac technically has to be weighted according to the chemical
+            // species. But this is a minimal implementation only for a single
+            // chemical species, so I am ommitting this for now. It would
+            // look something like
+            // sfac *= weights[a]
+            // Further, some things have to be calculated if
+            // switch_inner_flag is true. If I understand correctly, it
+            // essentially never is in our case. So I am ommitting this
+            // (along with some other similar lines) here for now.
+            // If this becomes relevant later, we of course have to
+            // add it.
+
+            // Now use sfac for computations.
+            for (jju in 0..<indexUMax) {
+                ulisttotR[jju] += sfac.sumIndexed { i, f -> f * ulistRIj[i][jju] }
+                ulisttotI[jju] += sfac.sumIndexed { i, f -> f * ulistIIj[i][jju] }
+            }
+            println()
+        }
+        return ulisttotR to ulisttotI
+    }
+
+    /**
+     *         Compute zi.
+     *
+     *         This calculates the bispectrum components through
+     *         triple scalar products/Clebsch-Gordan products.
+     *
+     *         FURTHER OPTIMIZATION: In the original code, this is a huge nested
+     *         for-loop. Even after optimization, this is the principal
+     *         computational cost (for realistic systems). I have found this
+     *         implementation to be the most efficient without any major refactoring.
+     *         However, due to the usage of np.unique, numba cannot trivially be used.
+     *         A different route that then may employ just-in-time compilation
+     *         could be fruitful.
+     */
+    fun computeZi(ulisttotR: FloatArray, ulisttotI: FloatArray): Pair<FloatArray, FloatArray> {
+        val tmpReal = FloatArray(indexZIcgb.size) {
+            cglist[indexZIcgb[it]] * cglist[indexZIcga[it]] *
+                    (ulisttotR[indexZU1r[it]] * ulisttotR[indexZU2r[it]] -
+                            ulisttotI[indexZU1i[it]] * ulisttotI[indexZU2i[it]])
+        }
+        val tmpImag = FloatArray(indexZIcgb.size) {
+            cglist[indexZIcgb[it]] * cglist[indexZIcga[it]] *
+                    (ulisttotR[indexZU1r[it]] * ulisttotI[indexZU2i[it]] +
+                            ulisttotI[indexZU1i[it]] * ulisttotR[indexZU2r[it]])
+        }
+
+        // Summation over an array based on indices stored in a different
+        // array.
+        // Taken from: https://stackoverflow.com/questions/67108215/how-to-get-sum-of-values-in-a-numpy-array-based-on-another-array-with-repetitive
+        // Under "much better version".
+        val zlistR = tmpReal.sumBy(indexZJjz)
+        val zlistI = tmpImag.sumBy(indexZJjz)
+        return zlistR to zlistI
+    }
+
+    /**
+     *         Compute the bispectrum descriptors itself.
+     *
+     *         This essentially just extracts the descriptors from
+     *         the expansion coeffcients.
+     *
+     *         FURTHER OPTIMIZATION: I have not optimized this function AT ALL.
+     *         This is due to the fact that its computational footprint is miniscule
+     *         compared to the other parts of the bispectrum descriptor calculation.
+     *         It contains multiple for-loops, that may be optimized out.
+     */
+    fun computeBi(ulisttotR: FloatArray, ulisttotI: FloatArray, zlistR: FloatArray, zlistI: FloatArray): FloatArray {
+        // For now set the number of elements to 1.
+        // This also has some implications for the rest of the function.
+        // This currently really only works for one element .
+        val nElements = 1
+        val nElementPairs = nElements * nElements
+        val nElementTriples = nElementPairs * nElements
+        var iElem = 0
+        val bList = FloatArray(indexBMax * nElementTriples)
+        var iTriple = 0
+        var iDouble = 0
+
+        if (bZeroFlag) {
+            TODO()
+            //            var wself = 1.0
+            //            val bZero = np.zeros(self.parameters.bispectrum_twojmax + 1)
+            //            www = wself * wself * wself
+            //            for j in range(self.parameters.bispectrum_twojmax + 1):
+            //            if self.bnorm_flag:
+            //            bZero[j] = www
+            //            else:
+            //            bZero[j] = www * (j + 1)
+        }
+
+        for (elem1 in 0..<nElements)
+            for (elem2 in 0..<nElements) {
+                for (elem3 in 0..<nElements) {
+                    for (jjb in 0..<indexBMax) {
+                        val b = indexB[jjb]
+                        val j1 = b.j1
+                        val j2 = b.j2
+                        val j = b.j
+                        var jjz = indexZBlock[j1][j2][j]
+                        var jju = indexUBlock[j]
+                        var sumZu = 0f
+                        for (mb in 0..<ceil((j / 2).toFloat()).toInt())
+                            for (ma in 0..j) {
+                                sumZu += ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
+                                        ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
+                                jjz++
+                                jju++
+                            }
+                        if (j % 2 == 0) {
+                            val mb = j.floorDiv(2)
+                            for (ma in 0..<mb) {
+                                sumZu += ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
+                                        ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
+                                jjz++
+                                jju++
+                            }
+                            sumZu += 0.5f * (ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
+                                    ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz])
+                        }
+                        bList[iTriple * indexBMax + jjb] = 2f * sumZu
+                    }
+                    iTriple++
+                }
+                iDouble++
+            }
+
+        if (bZeroFlag) {
+            TODO()
+            //            if not self.wselfall_flag:
+            //            itriple = (
+            //                    ielem * number_elements + ielem
+            //                    ) * number_elements + ielem
+            //            for jjb in range(self.__index_b_max):
+            //            j = self.__index_b[jjb].j
+            //            blist[itriple * self.__index_b_max + jjb] -= bzero[j]
+            //            else:
+            //            itriple = 0
+            //            for elem1 in range(number_elements):
+            //            for elem2 in range(number_elements):
+            //            for elem3 in range(number_elements):
+            //            for jjb in range(self.__index_b_max):
+            //            j = self.__index_b[jjb].j
+            //            blist[
+            //                itriple * self.__index_b_max + jjb
+            //            ] -= bzero[j]
+            //            itriple += 1
+        }
+
+        // Untested  & Unoptimized
+        if (quadraticFlag) {
+            TODO()
+            //            xyz_length = 3 if self.parameters.descriptors_contain_xyz else 0
+            //            ncount = self.fingerprint_length - xyz_length
+            //            for icoeff in range(ncount):
+            //            bveci = blist[icoeff]
+            //            blist[3 + ncount] = 0.5 * bveci * bveci
+            //            ncount += 1
+            //            for jcoeff in range(icoeff + 1, ncount):
+            //            blist[xyz_length + ncount] = bveci * blist[jcoeff]
+            //            ncount += 1
+        }
+
+        return bList
     }
 }

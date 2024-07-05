@@ -246,6 +246,15 @@ class Atoms(symbols: Any? = null,
         }
     }
 
+    /**
+     * Get chemical symbols as a :class:`ase.symbols.Symbols` object.
+     *
+     *         The object works like ``atoms.numbers`` except its values
+     *         are strings.  It supports in-place editing.
+     */
+    val symbols
+        get() = Symbols(numbers!!)
+
     val constraints: Any? = null
 
     /** Get the unit cell displacement vectors. */
@@ -256,6 +265,14 @@ class Atoms(symbols: Any? = null,
 
     /** Get integer array of atomic numbers. */
     fun getAtomicNumbers() = numbers!!.clone()
+
+    /**
+     * Get list of chemical symbol strings.
+     *
+     *         Equivalent to ``list(atoms.symbols)``.
+     */
+    val chemicalSymbols: List<String>
+        get() = numbers!!.map { ase.chemicalSymbols[it] }
 
     /**
      * Get array of positions.

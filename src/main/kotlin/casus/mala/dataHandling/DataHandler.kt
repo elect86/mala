@@ -184,7 +184,7 @@ class DataHandler(parameters: Parameters,
             else if (snapshot.snapshotType == Snapshot.Type.openpmd)
                 TODO()
             //                array["$gsOld : ${gsOld + gsNew}"] = calculator.read_from_openpmd_file(file, units = units).reshape([gsNew, featureDimension])
-            snapshotCounter += 1
+            snapshotCounter++
             gsOld += gsNew
         }
         // The scalers will later operate on torch Tensors so we have to make sure they are fitted on torch Tensors as well.

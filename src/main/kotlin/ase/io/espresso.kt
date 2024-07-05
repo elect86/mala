@@ -146,7 +146,7 @@ fun readEspressoOut(fileobj: Any, /*index=slice(None),*/ resultsRequired: Boolea
         for (energyIndex in indexes[PW_TOTEN]!!)
             if (energyIndex in imageIndex..<nextIndex) {
                 val split = pwoLines[energyIndex].splitSpaces()
-                energy = split[split.size - 2].toFloat() * units.Ry
+                energy = split[split.size - 2].toFloat() * units.Ry.toFloat()
             }
 
         // Forces
@@ -157,7 +157,7 @@ fun readEspressoOut(fileobj: Any, /*index=slice(None),*/ resultsRequired: Boolea
                 // Use exact lines to stop before 'non-local' forces in high verbosity
                 val offset = if (pwoLines[forceIndex + 2].trim().isEmpty()) 4 else 2
                 // assume contiguous
-                val rb = units.Ry / units.Bohr
+                val rb = (units.Ry / units.Bohr).toFloat()
                 forces = pwoLines.drop(forceIndex + offset).take(structure.len).map { forceLine ->
                     val f = forceLine.splitSpaces()
                     floatArrayOf(f[f.size - 3].toFloat() * rb, f[f.size - 2].toFloat() * rb, f[f.size - 1].toFloat() * rb)
@@ -174,7 +174,7 @@ fun readEspressoOut(fileobj: Any, /*index=slice(None),*/ resultsRequired: Boolea
                 val (_, _, szz) = pwoLines[stressIndex + 3].splitSpaces().take(3).map(String::toFloat)
                 stress = floatArrayOf(sxx, syy, szz, syz, sxz, sxy)
                 // sign convention is opposite of ase
-                stress *= -1 * units.Ry / units.Bohr.pow(3)
+                stress *= (-1 * units.Ry / units.Bohr.pow(3)).toFloat()
             }
         }
 
@@ -369,7 +369,7 @@ fun parsePwoStart(lines: List<String>, index: Int = 0): Info {
         fun String.splitFloats(start: Int, end: Int) = splitSpaces().subList(start, end).map(String::toFloat).toFloatArray()
         if ("celldm(1)" in line) {
             // celldm(1) has more digits than alat !!
-            info.`celldm(1)` = line.splitSpaces()[1].toFloat() * units.Bohr
+            info.`celldm(1)` = line.splitSpaces()[1].toFloat() * units.Bohr.toFloat()
             info.alat = info.`celldm(1)`
         } else if ("number of atoms/cell" in line)
             info.nat = last().toInt()

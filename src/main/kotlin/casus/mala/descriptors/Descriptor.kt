@@ -5,9 +5,12 @@ import ase.*
 import ase.io.div
 import casus.mala.common.Parameters
 import casus.mala.common.PhysicalData
+import lammps.Lammps
 import skspatial.objects.Plane
 import skspatial.objects.Point
 import java.io.File
+import java.time.LocalDateTime
+import kotlin.properties.Delegates
 
 /** Base class for all descriptors available in MALA.
  *
@@ -23,6 +26,12 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
     var inFormatAse = ""
     lateinit var atoms: Atoms
     var voxel: Cell? = null
+
+    // If we ever have NON LAMMPS descriptors, these parameters have no
+    // meaning anymore and should probably be moved to an intermediate
+    // DescriptorsLAMMPS class, from which the LAMMPS descriptors inherit.
+    var lammpsTemporaryInput: File? = null
+    var lammpsTemporaryLog: File? = null
 
     //#############################
     // Properties
@@ -55,6 +64,16 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         }
 
     /**
+     *         Timestamp of calculation start.
+     *
+     *         Used to distinguish multiple LAMMPS runs performed in the same
+     *         directory. Since the interface is file based, this timestamp prevents
+     *         problems with slightly
+     */
+    val calculationTimestamp: String
+        get() = LocalDateTime.now().toString()
+
+    /**
      * Explictly enforces the PBC on an ASE atoms object.
      *
      * QE (and potentially other codes?) do that internally. Meaning that the
@@ -82,7 +101,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         var rescaledAtoms = 0
         for (atom in atoms) {
             if (false in atom.position.isClose(atom.position, atol = 0.001f))
-                rescaledAtoms += 1
+                rescaledAtoms++
         }
         print("Descriptor calculation: had to enforce periodic boundary conditions on $rescaledAtoms atoms " +
               "before calculation." /*min_verbosity = 2*/)
@@ -102,7 +121,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
      *             Numpy array containing the descriptors with the dimension
      *             (x,y,z,descriptor_dimension)
      */
-    fun calculateFromQeOut(qeOutFile: File, workingDirectory: File = File("."), kwargs: MutableMap<String, Any?>): Any {
+    fun calculateFromQeOut(qeOutFile: File, workingDirectory: File = File("."), kwargs: MutableMap<String, Any>): Any {
         inFormatAse = "espresso-out"
         println("Calculating descriptors from $qeOutFile"/*min_verbosity=0*/)
         // We get the atomic information by using ASE.
@@ -186,6 +205,52 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         get() = if (descriptorsContainXyz) 3 else 0
 
     /**
+     *         Set up the lammps processor grid.
+     *
+     *         Takes into account y/z-splitting.
+     */
+    protected fun setupLammps(nx: Int, ny: Int, nz: Int, lammpsDict: MutableMap<String, Any>): Lammps {
+
+        // Build LAMMPS arguments from the data we read.
+        var lmpCmdargs = listOf("-screen", "none", "-log", lammpsTemporaryLog!!.absolutePath)
+
+        lammpsDict["atom_config_fname"] = lammpsTemporaryInput!!
+
+        var size by Delegates.notNull<Int>()
+        if (parameters.configuration.mpi) {
+            TODO()
+        } else {
+            size = 1
+            lammpsDict["ngridx"] = nx
+            lammpsDict["ngridy"] = ny
+            lammpsDict["ngridz"] = nz
+            lammpsDict["switch"] = parameters.bispectrumSwitchflag
+        }
+
+        if (parameters.configuration.gpu) {
+            TODO()
+//            # Tell Kokkos to use one GPU.
+//            lmp_cmdargs.append("-k")
+//            lmp_cmdargs.append("on")
+//            lmp_cmdargs.append("g")
+//            lmp_cmdargs.append(str(size))
+//
+//            # Tell LAMMPS to use Kokkos versions of those commands for
+//            # which a Kokkos version exists.
+//            lmp_cmdargs.append("-sf")
+//            lmp_cmdargs.append("kk")
+//            pass
+        }
+
+        lmpCmdargs = setCmdlineVars(lmpCmdargs, lammpsDict)
+        val lmp = Lammps(cmdArgs = lmpCmdargs)
+
+//        set_lammps_instance(lmp)
+        return lmp
+    }
+
+
+    /**
      * Set up a list of atoms potentially relevant for descriptor calculation.
      *
      * If periodic boundary conditions are used, which is usually the case
@@ -244,7 +309,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         for (a in allCells.indices) {
             if (allCells[a].all { it == 0 })
                 break
-            idx += 1
+            idx++
         }
         allCells = allCells.filterIndexed { index, _ -> index != idx }
 
@@ -314,7 +379,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         }
     }
 
-    internal abstract fun calculate(outDir: File, kwargs: Map<String, Any?>): Number
+    internal abstract fun calculate(outDir: File, kwargs: Map<String, Any>): Number
 
     companion object {
         infix fun from(params: Parameters): Descriptor = when (params.descriptors.type) {
