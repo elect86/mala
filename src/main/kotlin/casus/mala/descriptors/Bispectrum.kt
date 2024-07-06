@@ -118,7 +118,8 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         }
 
         // Do the LAMMPS calculation and clean up.
-        lmp.file(self.parameters.lammps_compute_file)
+//        lmp.file(self.parameters.lammps_compute_file)
+        TODO()
     }
 
     /**

@@ -1,5 +1,5 @@
-/build
-/.gradle
+build
+.gradle
 
 # Created by https://www.toptal.com/developers/gitignore/api/java,gradle,intellij,kotlin
 # Edit at https://www.toptal.com/developers/gitignore?templates=java,gradle,intellij,kotlin
