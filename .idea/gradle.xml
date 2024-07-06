@@ -59,20 +59,14 @@
                   <project path="$PROJECT_DIR$/../djl/buildSrc" />
                 </projects>
               </build>
-              <build path="$PROJECT_DIR$/../djl.kt" name="djl.kt">
-                <projects>
-                  <project path="$PROJECT_DIR$/../djl.kt" />
-                </projects>
-              </build>
             </builds>
           </compositeBuild>
         </compositeConfiguration>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="" />
+        <option name="gradleJvm" value="21" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/../djl" />
-            <option value="$PROJECT_DIR$/../djl.kt" />
             <option value="$PROJECT_DIR$/../djl/api" />
             <option value="$PROJECT_DIR$/../djl/basicdataset" />
             <option value="$PROJECT_DIR$/../djl/buildSrc" />

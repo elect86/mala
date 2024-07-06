@@ -1,5 +1,7 @@
 package casus.mala.descriptors
 
+import java.util.ArrayList
+
 /**
  *     Add a dicitionary of LAMMPS arguments in a command line argument string.
  *
@@ -16,5 +18,5 @@ package casus.mala.descriptors
  *     cmdargs : list
  *         New command line argument string.
  */
-fun setCmdlineVars(cmdargs: List<String>, argDict: Map<String, Any>): List<String> =
-    cmdargs + argDict.flatMap { (k, v) -> listOf("-var", k, v.toString()) }
+fun setCmdlineVars(cmdargs: List<String>, argDict: Map<String, Any>): ArrayList<String> =
+    (cmdargs + argDict.flatMap { (k, v) -> listOf("-var", k, v.toString()) }) as ArrayList<String>

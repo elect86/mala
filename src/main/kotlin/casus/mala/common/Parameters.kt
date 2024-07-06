@@ -196,7 +196,7 @@ class Parameters: ParametersInterface {
 
         /** Bispectrum calculation: LAMMPS input file that is used to calculate the Bispectrum descriptors. If this
          *  string is empty, the standard LAMMPS input file found in this repository will be used (recommended). */
-        lateinit var lammpsComputeFile: File// = ""
+        var lammpsComputeFile: File? = null
 
         /** Legacy option. If True, it is assumed that the first three entries of the descriptor vector are the xyz
          *  coordinates, and they are cut from the descriptor vector. If False, no such cutting is performed. */

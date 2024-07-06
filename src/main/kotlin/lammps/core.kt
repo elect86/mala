@@ -1,8 +1,10 @@
 package lammps
 
+import jdk.jfr.MemoryAddress
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
+import java.util.ArrayList
 
 
 /**
@@ -31,12 +33,13 @@ import java.lang.foreign.ValueLayout
  *   :param comm: MPI communicator (as provided by `mpi4py <mpi4py_docs_>`_). ``None`` means use ``MPI_COMM_WORLD`` implicitly.
  *   :type  comm: MPI_Comm
  */
-class Lammps(name: String = "", cmdArgs: List<String> = emptyList()) {
+class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
 
     // -------------------------------------------------------------------------
     // create an instance of LAMMPS
 
     val address: MemorySegment = Arena.ofConfined().use { offHeap ->
+        cmdArgs.add(0, "lammps")
         // 4. Allocate a region of off-heap memory to store four pointers
         val pointers = offHeap.allocate(ValueLayout.ADDRESS, cmdArgs.size.toLong())
         // 5. Copy the strings from on-heap to off-heap
@@ -44,6 +47,6 @@ class Lammps(name: String = "", cmdArgs: List<String> = emptyList()) {
             val cString = offHeap.allocateFrom(cmdArgs[i])
             pointers.setAtIndex(ValueLayout.ADDRESS, i.toLong(), cString)
         }
-        library_h.lammps_open_no_mpi(cmdArgs.size, pointers, null)
+        library_h.lammps_open_no_mpi(cmdArgs.size, pointers, MemorySegment.NULL)
     }
 }

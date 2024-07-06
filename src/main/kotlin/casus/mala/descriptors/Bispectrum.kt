@@ -100,7 +100,25 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         lammpsTemporaryLog = File.createTempFile("lammps_bgrid_log_", ".tmp")
 
         val lmp = setupLammps(nx, ny, nz, lammpsDict)
-        TODO()
+
+        // An empty string means that the user wants to use the standard input.
+        // What that is differs depending on serial/parallel execution.
+        if (parameters.lammpsComputeFile == null)
+            parameters.lammpsComputeFile = when {
+                parameters.configuration.mpi -> TODO()
+//            if self.parameters.use_z_splitting:
+//            self.parameters.lammps_compute_file = os.path.join(
+//                filepath, "in.bgridlocal.python"
+//                                                              )
+//            else:
+//            self.parameters.lammps_compute_file = os.path.join(
+//                filepath, "in.bgridlocal_defaultproc.python"
+//                                                              )
+            else -> File(this::class.java.getResource("in.bgrid.python")!!.toURI())
+        }
+
+        // Do the LAMMPS calculation and clean up.
+        lmp.file(self.parameters.lammps_compute_file)
     }
 
     /**
