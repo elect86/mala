@@ -187,5 +187,66 @@ public class library_h {
            throw new AssertionError("should not reach here", ex$);
         }
     }
+
+    private static class lammps_extract_compute {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            library_h.C_POINTER,
+            library_h.C_POINTER,
+            library_h.C_POINTER,
+            library_h.C_INT,
+            library_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = library_h.findOrThrow("lammps_extract_compute");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * void *lammps_extract_compute(void *handle, const char *, int, int)
+     * }
+     */
+    public static FunctionDescriptor lammps_extract_compute$descriptor() {
+        return lammps_extract_compute.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * void *lammps_extract_compute(void *handle, const char *, int, int)
+     * }
+     */
+    public static MethodHandle lammps_extract_compute$handle() {
+        return lammps_extract_compute.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * void *lammps_extract_compute(void *handle, const char *, int, int)
+     * }
+     */
+    public static MemorySegment lammps_extract_compute$address() {
+        return lammps_extract_compute.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * void *lammps_extract_compute(void *handle, const char *, int, int)
+     * }
+     */
+    public static MemorySegment lammps_extract_compute(MemorySegment handle, MemorySegment x1, int x2, int x3) {
+        var mh$ = lammps_extract_compute.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("lammps_extract_compute", handle, x1, x2, x3);
+            }
+            return (MemorySegment)mh$.invokeExact(handle, x1, x2, x3);
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
 }
 
