@@ -9,6 +9,7 @@ import lammps.Lammps
 import skspatial.objects.Plane
 import skspatial.objects.Point
 import java.io.File
+import java.nio.file.Path
 import java.time.LocalDateTime
 import kotlin.properties.Delegates
 
@@ -121,7 +122,8 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
      *             Numpy array containing the descriptors with the dimension
      *             (x,y,z,descriptor_dimension)
      */
-    fun calculateFromQeOut(qeOutFile: File, workingDirectory: File = File("."), kwargs: MutableMap<String, Any>): Any {
+    fun calculateFromQeOut(qeOutFile: File, kwargs: MutableMap<String, Any>,
+                           workingDirectory: Path = kwargs["workingDirectory"] as Path? ?: Path.of(".")): Any {
         inFormatAse = "espresso-out"
         println("Calculating descriptors from $qeOutFile"/*min_verbosity=0*/)
         // We get the atomic information by using ASE.
@@ -209,12 +211,16 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
      *
      *         Takes into account y/z-splitting.
      */
-    protected fun setupLammps(nx: Int, ny: Int, nz: Int, lammpsDict: MutableMap<String, Any>): Lammps {
+    protected fun setupLammps(nx: Int, ny: Int, nz: Int, outDir: Path,
+                              lammpsDict: MutableMap<String, Any>, logFileName: String = "lammps_log.tmp"): Lammps {
+
+        System.err.println("Using LAMMPS for descriptor calculation. Do not initialize more than one pre-processing " +
+                           "calculation in the same directory at the same time. Data may be over-written.")
 
         // Build LAMMPS arguments from the data we read.
         var lmpCmdargs = listOf("-screen", "none", "-log", lammpsTemporaryLog!!.absolutePath)
 
-        lammpsDict["atom_config_fname"] = lammpsTemporaryInput!!
+//        lammpsDict["atom_config_fname"] = lammpsTemporaryInput!!
 
         var size by Delegates.notNull<Int>()
         if (parameters.configuration.mpi) {
@@ -379,7 +385,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         }
     }
 
-    internal abstract fun calculate(outDir: File, kwargs: Map<String, Any>): Number
+    internal abstract fun calculate(outDir: Path, kwargs: Map<String, Any>): Number
 
     companion object {
         infix fun from(params: Parameters): Descriptor = when (params.descriptors.type) {

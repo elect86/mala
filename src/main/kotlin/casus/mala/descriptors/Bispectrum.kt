@@ -3,8 +3,10 @@ package casus.mala.descriptors
 import ase.*
 import ase.io.prod
 import casus.mala.common.Parameters
-import casus.mala.dataHandling.div
+import lammps.library_h
 import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.div
 import kotlin.math.*
 
 /** Class for calculation and parsing of bispectrum descriptors. */
@@ -56,7 +58,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
 
     //    fun convertUnits(array: NDArray): Nothing = TODO() // convertUnits (array, null)
 
-    override fun calculate(outDir: File, kwargs: Map<String, Any>): Number = when {
+    override fun calculate(outDir: Path, kwargs: Map<String, Any>): Number = when {
         //        else -> calculateKotlin(kwargs)
         else -> calculateLammps(outDir, kwargs) as Number
         //        parameters.configuration.lammps
@@ -79,14 +81,15 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
      *         Creates a LAMMPS instance with appropriate call parameters and uses
      *         it for the calculation.
      */
-    private fun calculateLammps(outdir: File, kwargs: Map<String, Any>): Number {
+    private fun calculateLammps(outDir: Path, kwargs: Map<String, Any>): Number {
         // For version compatibility; older lammps versions(the serial version
         // we still use on some machines) have these constants as part of the
         // general LAMMPS import.
-        val useFp64 = kwargs["use_fp64"] as Boolean? ?: false
-        val keepLogs = kwargs["keep_logs"] as Boolean? ?: false
+        val useFp64 = kwargs["useFp64"] as Boolean? ?: false
+        val keepLogs = kwargs["keepLogs"] as Boolean? ?: false
 
         val lammpsFormat = "lammps-data"
+        val aseOutPath = outDir / "lammps_input.tmp"
         lammpsTemporaryInput = File.createTempFile("lammps_input_", ".tmp")
 
         ase.io.write(lammpsTemporaryInput!!, atoms, lammpsFormat)
@@ -95,31 +98,70 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
 
         // Create LAMMPS instance.
         val lammpsDict: MutableMap<String, Any> = mutableMapOf("twojmax" to parameters.bispectrumTwojmax,
-                                                               "rcutfac" to parameters.bispectrumCutoff)
+                                                               "rcutfac" to parameters.bispectrumCutoff,
+                                                               "atom_config_fname" to aseOutPath)
 
         lammpsTemporaryLog = File.createTempFile("lammps_bgrid_log_", ".tmp")
 
-        val lmp = setupLammps(nx, ny, nz, lammpsDict)
+        val lmp = setupLammps(nx, ny, nz, outDir, lammpsDict, logFileName = "lammps_bgrid_log.tmp")
 
         // An empty string means that the user wants to use the standard input.
         // What that is differs depending on serial/parallel execution.
         if (parameters.lammpsComputeFile == null)
             parameters.lammpsComputeFile = when {
                 parameters.configuration.mpi -> TODO()
-//            if self.parameters.use_z_splitting:
-//            self.parameters.lammps_compute_file = os.path.join(
-//                filepath, "in.bgridlocal.python"
-//                                                              )
-//            else:
-//            self.parameters.lammps_compute_file = os.path.join(
-//                filepath, "in.bgridlocal_defaultproc.python"
-//                                                              )
-            else -> File(this::class.java.getResource("in.bgrid.python")!!.toURI())
-        }
+                //            if self.parameters.use_z_splitting:
+                //            self.parameters.lammps_compute_file = os.path.join(
+                //                filepath, "in.bgridlocal.python"
+                //                                                              )
+                //            else:
+                //            self.parameters.lammps_compute_file = os.path.join(
+                //                filepath, "in.bgridlocal_defaultproc.python"
+                //                                                              )
+                else -> File(this::class.java.getResource("in.bgrid.python")!!.toURI())
+            }
 
         // Do the LAMMPS calculation and clean up.
-//        lmp.file(self.parameters.lammps_compute_file)
-        TODO()
+        lmp.file(parameters.lammpsComputeFile!!)
+
+        // Set things not accessible from LAMMPS
+        // First 3 cols are x, y, z, coords
+        val nCols0 = 3
+
+        // Analytical relation for fingerprint length
+        var nCoeff = parameters.bispectrumTwojmax.let { (it + 2) * (it + 3) * (it + 4) }
+        nCoeff = nCoeff.floorDiv(24) // integer division
+        fingerprintLength = nCols0 + nCoeff
+
+        // Extract data from LAMMPS calculation.
+        // This is different for the parallel and the serial case.
+        // In the serial case we can expect to have a full bispectrum array at
+        // the end of this function.
+        // This is not necessarily true for the parallel case.
+        return when {
+            parameters.configuration.mpi -> TODO()
+            else -> {
+                // Extract data from LAMMPS calculation.
+                val snapDescriptorsNp = extractComputeNp(lmp,
+                                                         "bgrid",
+                                                         library_h.Style.global,
+                                                         library_h.Type.array,
+                                                         intArrayOf(nz, ny, nx, fingerprintLength),
+                                                         useFp64)
+                TODO()
+//                lmp.close()
+//
+//                # switch from x - fastest to z - fastest order (swaps 0th and 2nd
+//                # dimension)
+//                snapDescriptorsNp = snapDescriptorsNp.transpose([2, 1, 0, 3])
+//                # Copy the grid dimensions only at the end .
+//                self.grid_dimensions = [nx, ny, nz]
+//                if self.parameters.descriptors_contain_xyz:
+//                return snapDescriptorsNp, nx * ny * nz
+//                else:
+//                return snapDescriptorsNp[:, :, :, 3:], nx * ny * nz
+            }
+        }
     }
 
     /**
@@ -147,7 +189,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         println("Using kotlin for descriptor calculation. The resulting calculation will be slow for large systems.")
 
         // The entire bispectrum calculation may be extensively profiled.
-        val profileCalculation = true //kwargs["profile_calculation"] as Boolean? ?: false
+        val profileCalculation = kwargs["profileCalculation"] as Boolean? ?: false
 
         var timingDistances = 0f
         var timingUi = 0f
@@ -368,8 +410,8 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
         fun deltaCg(j1: Int, j2: Int, j: Int): Double {
             val sfaccg = ((j1 + j2 + j).floorDiv(2) + 1).factorial()
             return sqrt((j1 + j2 - j).floorDiv(2).factorial() *
-                                (j1 - j2 + j).floorDiv(2).factorial() *
-                                (-j1 + j2 + j).floorDiv(2).factorial() / sfaccg.toDouble())
+                        (j1 - j2 + j).floorDiv(2).factorial() *
+                        (-j1 + j2 + j).floorDiv(2).factorial() / sfaccg.toDouble())
         }
 
         //#######
@@ -521,20 +563,20 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                             for (z in max(0, x)..min((j1 + j2 - j).floorDiv(2), y)) {
                                 val ifac = if (z % 2 != 0) -1f else 1f
                                 cgsum += ifac / (z.factorial() *
-                                        ((j1 + j2 - j).floorDiv(2) - z).factorial() *
-                                        ((j1 - aa2).floorDiv(2) - z).factorial() *
-                                        ((j2 + bb2).floorDiv(2) - z).factorial() *
-                                        ((j - j2 + aa2).floorDiv(2) + z).factorial() *
-                                        ((j - j1 - bb2).floorDiv(2) + z).factorial())
+                                                 ((j1 + j2 - j).floorDiv(2) - z).factorial() *
+                                                 ((j1 - aa2).floorDiv(2) - z).factorial() *
+                                                 ((j2 + bb2).floorDiv(2) - z).factorial() *
+                                                 ((j - j2 + aa2).floorDiv(2) + z).factorial() *
+                                                 ((j - j1 - bb2).floorDiv(2) + z).factorial())
                             }
                             val cc2 = 2 * m - j
                             val dcg = deltaCg(j1, j2, j)
                             val sfaccg = sqrt(((j1 + aa2).floorDiv(2).factorial() *
-                                    (j1 - aa2).floorDiv(2).factorial() *
-                                    (j2 + bb2).floorDiv(2).factorial() *
-                                    (j2 - bb2).floorDiv(2).factorial() *
-                                    (j + cc2).floorDiv(2).factorial() *
-                                    (j - cc2).floorDiv(2).factorial() * (j + 1)).toDouble())
+                                               (j1 - aa2).floorDiv(2).factorial() *
+                                               (j2 + bb2).floorDiv(2).factorial() *
+                                               (j2 - bb2).floorDiv(2).factorial() *
+                                               (j + cc2).floorDiv(2).factorial() *
+                                               (j - cc2).floorDiv(2).factorial() * (j + 1)).toDouble())
                             cglist[idxcgCount] = (cgsum * dcg * sfaccg).toFloat()
                             idxcgCount++
                         }
@@ -759,13 +801,13 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
     fun computeZi(ulisttotR: FloatArray, ulisttotI: FloatArray): Pair<FloatArray, FloatArray> {
         val tmpReal = FloatArray(indexZIcgb.size) {
             cglist[indexZIcgb[it]] * cglist[indexZIcga[it]] *
-                    (ulisttotR[indexZU1r[it]] * ulisttotR[indexZU2r[it]] -
-                            ulisttotI[indexZU1i[it]] * ulisttotI[indexZU2i[it]])
+            (ulisttotR[indexZU1r[it]] * ulisttotR[indexZU2r[it]] -
+             ulisttotI[indexZU1i[it]] * ulisttotI[indexZU2i[it]])
         }
         val tmpImag = FloatArray(indexZIcgb.size) {
             cglist[indexZIcgb[it]] * cglist[indexZIcga[it]] *
-                    (ulisttotR[indexZU1r[it]] * ulisttotI[indexZU2i[it]] +
-                            ulisttotI[indexZU1i[it]] * ulisttotR[indexZU2r[it]])
+            (ulisttotR[indexZU1r[it]] * ulisttotI[indexZU2i[it]] +
+             ulisttotI[indexZU1i[it]] * ulisttotR[indexZU2r[it]])
         }
 
         // Summation over an array based on indices stored in a different
@@ -826,7 +868,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                         for (mb in 0..<ceil((j / 2).toFloat()).toInt())
                             for (ma in 0..j) {
                                 sumZu += ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
-                                        ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
+                                         ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
                                 jjz++
                                 jju++
                             }
@@ -834,12 +876,12 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
                             val mb = j.floorDiv(2)
                             for (ma in 0..<mb) {
                                 sumZu += ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
-                                        ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
+                                         ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz]
                                 jjz++
                                 jju++
                             }
                             sumZu += 0.5f * (ulisttotR[elem3 * indexUMax + jju] * zlistR[jjz] +
-                                    ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz])
+                                             ulisttotI[elem3 * indexUMax + jju] * zlistI[jjz])
                         }
                         bList[iTriple * indexBMax + jjb] = 2f * sumZu
                     }

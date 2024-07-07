@@ -64,8 +64,8 @@ fun main() {
                                        targetSavePath = File("./"),
                                        additionalInfoSavePath = File("./"),
                                        namingScheme = "Be_snapshot*.npy",
-                                       descriptorCalculationKwargs = mutableMapOf("working_directory" to dataPath,
-                                                                                  "profile_calculation" to true))
+                                       descriptorCalculationKwargs = mutableMapOf("workingDirectory" to dataPath,
+                                                                                  "profileCalculation" to true))
 
 
     }

@@ -1,6 +1,8 @@
 package lammps
 
-import jdk.jfr.MemoryAddress
+import lammps.library_h.Style
+import lammps.library_h.Type
+import java.io.File
 import java.lang.foreign.Arena
 import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
@@ -38,7 +40,7 @@ class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
     // -------------------------------------------------------------------------
     // create an instance of LAMMPS
 
-    val address: MemorySegment = Arena.ofConfined().use { offHeap ->
+    val lmp: MemorySegment = Arena.ofConfined().use { offHeap ->
         cmdArgs.add(0, "lammps")
         // 4. Allocate a region of off-heap memory to store four pointers
         val pointers = offHeap.allocate(ValueLayout.ADDRESS, cmdArgs.size.toLong())
@@ -48,5 +50,53 @@ class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
             pointers.setAtIndex(ValueLayout.ADDRESS, i.toLong(), cString)
         }
         library_h.lammps_open_no_mpi(cmdArgs.size, pointers, MemorySegment.NULL)
+    }
+
+    /**
+     *     Read LAMMPS commands from a file.
+     *
+     *     This is a wrapper around the :cpp:func:`lammps_file` function of the C-library interface.
+     *     It will open the file with the name/path `file` and process the LAMMPS commands line by line until
+     *     the end. The function will return when the end of the file is reached.
+     *
+     *     :param path: Name of the file/path with LAMMPS commands
+     *     :type path:  string
+     */
+    fun file(path: File) {
+        Arena.ofConfined().use { offHeap ->
+            val pString = offHeap.allocateFrom("/home/elect/PycharmProjects/mala/mala/descriptors/in.bgrid.python")
+            library_h.lammps_file(lmp, pString)
+        }
+    }
+
+    /**
+     * Retrieve data from a LAMMPS compute
+     *
+     *     This is a wrapper around the :cpp:func:`lammps_extract_compute`
+     *     function of the C-library interface.
+     *     This function returns ``None`` if either the compute id is not
+     *     recognized, or an invalid combination of :ref:`cstyle <py_style_constants>`
+     *     and :ref:`ctype <py_type_constants>` constants is used. The
+     *     names and functionality of the constants are the same as for
+     *     the corresponding C-library function.  For requests to return
+     *     a scalar or a size, the value is returned, otherwise a pointer.
+     *
+     *     :param cid: compute ID
+     *     :type cid:  string
+     *     :param cstyle: style of the data retrieve (global, atom, or local), see :ref:`py_style_constants`
+     *     :type cstyle:  int
+     *     :param ctype: type or size of the returned data (scalar, vector, or array), see :ref:`py_type_constants`
+     *     :type ctype:  int
+     *     :return: requested data as scalar, pointer to 1d or 2d double array, or None
+     *     :rtype: c_double, ctypes.POINTER(c_double), ctypes.POINTER(ctypes.POINTER(c_double)), or NoneType
+     */
+    fun extractCompute(cId: String, cStyle: Style, cType: Type) = when(cType) {
+        Type.scalar -> TODO()
+        Type.vector -> TODO()
+        Type.array -> Arena.ofConfined().use {
+            library_h.lammps_extract_compute(lmp, it.allocateFrom(cId), cStyle.ordinal, cType.ordinal)
+        }
+        Type.sizeCols -> TODO()
+        else -> TODO()
     }
 }

@@ -9,11 +9,14 @@ import casus.mala.dataHandling.TargetInputType
 import kotlin.io.path.div
 import org.junit.jupiter.api.Test
 import java.io.File
+import java.util.*
 
 class `ex03 preprocess data` {
 
     @Test
     fun preprocess() {
+        println(Locale.getDefault().)
+        //        Locale.setDefault(Locale.ROOT)
         /*
         Shows how this framework can be used to preprocess
         data. Preprocessing here means converting raw DFT calculation output into
@@ -89,8 +92,8 @@ class `ex03 preprocess data` {
                                            targetSavePath = File("./"),
                                            additionalInfoSavePath = File("./"),
                                            namingScheme = "Be_snapshot*.npy",
-                                           descriptorCalculationKwargs = mutableMapOf("working_directory" to dataPath,
-                                                                                      "profile_calculation" to true))
+                                           descriptorCalculationKwargs = mutableMapOf("workingDirectory" to be2,
+                                                                                      "profileCalculation" to true))
 
 
         }

@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel target="22" />
+    <bytecodeTargetLevel target="22">
+      <module name="djl.kt" target="17" />
+      <module name="djl.kt.main" target="17" />
+      <module name="djl.kt.test" target="17" />
+    </bytecodeTargetLevel>
   </component>
 </project>

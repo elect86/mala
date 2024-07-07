@@ -55,7 +55,7 @@ public class library_h_ {
     }
 
     static final SymbolLookup SYMBOL_LOOKUP =
-            SymbolLookup.libraryLookup(Path.of("/home/elect/PycharmProjects/lammps/build/liblammps.so"), LIBRARY_ARENA);
+            SymbolLookup.libraryLookup(Path.of("../lammps/build/liblammps.so"), LIBRARY_ARENA);
 //            .or(SymbolLookup.libraryLookup(System.mapLibraryName("lammps"), LIBRARY_ARENA))
 //            .or(SymbolLookup.loaderLookup())
 //            .or(Linker.nativeLinker().defaultLookup());

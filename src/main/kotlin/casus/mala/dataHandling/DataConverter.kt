@@ -396,7 +396,7 @@ class DataConverter(val parametersFull: Parameters,
         when (description.input) {
             DescriptorInputType.`espresso-out` -> {
                 originalUnits.first?.let { descriptorCalculationKwargs["units"] = it }
-                descriptorCalculationKwargs["use_fp64"] = useFp64
+                descriptorCalculationKwargs["useFp64"] = useFp64
 
                 /*tmp_input, local_size =*/ descriptorCalculator.calculateFromQeOut(snapshot.input, kwargs = descriptorCalculationKwargs)
             }
