@@ -5,7 +5,6 @@ package lammps;
 import java.lang.invoke.*;
 import java.lang.foreign.*;
 import java.nio.ByteOrder;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
@@ -56,7 +55,7 @@ public class library_h {
         };
     }
 
-    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup(Path.of("/home/elect/PycharmProjects/lammps/build/liblammps.so"), LIBRARY_ARENA)
+    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup(System.mapLibraryName("PycharmProjects/lammps/build/liblammps.so"), LIBRARY_ARENA)
             .or(SymbolLookup.loaderLookup())
             .or(Linker.nativeLinker().defaultLookup());
 
@@ -126,6 +125,63 @@ public class library_h {
                 traceDowncall("lammps_open_no_mpi", argc, argv, ptr);
             }
             return (MemorySegment)mh$.invokeExact(argc, argv, ptr);
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class lammps_close {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.ofVoid(
+            library_h.C_POINTER
+        );
+
+        public static final MemorySegment ADDR = library_h.findOrThrow("lammps_close");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * void lammps_close(void *handle)
+     * }
+     */
+    public static FunctionDescriptor lammps_close$descriptor() {
+        return lammps_close.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * void lammps_close(void *handle)
+     * }
+     */
+    public static MethodHandle lammps_close$handle() {
+        return lammps_close.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * void lammps_close(void *handle)
+     * }
+     */
+    public static MemorySegment lammps_close$address() {
+        return lammps_close.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * void lammps_close(void *handle)
+     * }
+     */
+    public static void lammps_close(MemorySegment handle) {
+        var mh$ = lammps_close.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("lammps_close", handle);
+            }
+            mh$.invokeExact(handle);
         } catch (Throwable ex$) {
            throw new AssertionError("should not reach here", ex$);
         }
@@ -249,8 +305,5 @@ public class library_h {
            throw new AssertionError("should not reach here", ex$);
         }
     }
-
-    public enum Style { global, atom, local }
-    public enum Type { scalar, vector, array, sizeVector, sizeRows, sizeCols }
 }
 
