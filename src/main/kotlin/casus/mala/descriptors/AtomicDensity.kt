@@ -9,7 +9,7 @@ class AtomicDensity(parameters: Parameters) : Descriptor(parameters) {
         TODO("Not yet implemented")
     }
 
-    override fun calculate(outDir: Path, kwargs: Map<String, Any>): Number {
+    override fun calculate(outDir: Path, kwargs: Map<String, Any>): Pair<Array<Array<Array<FloatArray>>>, Int> {
         TODO("Not yet implemented")
     }
 

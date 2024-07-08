@@ -6,17 +6,20 @@ import casus.mala.dataHandling.AdditionalInfoInputType
 import casus.mala.dataHandling.DataConverter
 import casus.mala.dataHandling.DescriptorInputType
 import casus.mala.dataHandling.TargetInputType
-import kotlin.io.path.div
 import org.junit.jupiter.api.Test
 import java.io.File
-import java.util.*
+import java.lang.foreign.Arena
+import java.lang.foreign.FunctionDescriptor
+import java.lang.foreign.Linker
+import java.lang.foreign.ValueLayout
+import kotlin.io.path.div
+
 
 class `ex03 preprocess data` {
 
     @Test
     fun preprocess() {
-        println(Locale.getDefault().)
-        //        Locale.setDefault(Locale.ROOT)
+
         /*
         Shows how this framework can be used to preprocess
         data. Preprocessing here means converting raw DFT calculation output into

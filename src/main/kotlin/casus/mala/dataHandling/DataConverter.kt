@@ -1,7 +1,6 @@
 package casus.mala.dataHandling
 
 import casus.mala.common.Parameters
-import casus.mala.common.PhysicalData
 import casus.mala.descriptors.Descriptor
 import casus.mala.targets.Target
 import java.io.File
@@ -385,23 +384,39 @@ class DataConverter(val parametersFull: Parameters,
                                       additionalInfoPath: File? = null,
                                       useMemmap: File? = null,
         //                                      output_iteration = None,
-        //                                      input_iteration = None,
+                                      inputIteration: Any? = null,
                                       useFp64: Boolean = false) {
 
         val snapshot = snapshotsToConvert[snapshotNumber]
         val description = snapshotDescription[snapshotNumber]
         val originalUnits = snapshotUnits[snapshotNumber]
 
+        lateinit var tmpInput: Array<Array<Array<FloatArray>>>
+        var localSize = 0
         // Parse and/or calculate the input descriptors.
         when (description.input) {
             DescriptorInputType.`espresso-out` -> {
                 originalUnits.first?.let { descriptorCalculationKwargs["units"] = it }
                 descriptorCalculationKwargs["useFp64"] = useFp64
 
-                /*tmp_input, local_size =*/ descriptorCalculator.calculateFromQeOut(snapshot.input, kwargs = descriptorCalculationKwargs)
+                val (input, size) = descriptorCalculator.calculateFromQeOut(snapshot.input, kwargs = descriptorCalculationKwargs)
+                tmpInput = input
+                localSize = size
             }
             //In this case, only the output is processed.
             null -> Unit
+        }
+
+        if (description.input != null) {
+            // Save data and delete, if not requested otherwise.
+            if (inputPath != null && inputIteration == null) {
+                if (parameters.mpi) TODO()
+                //                        tmp_input = self.descriptor_calculator.gather_descriptors(tmp_input)
+                fun getRank() = 0
+//                if (getRank() == 0)
+//                    descriptorCalculator.write_to_numpy_file(input_path, tmp_input)
+            }
+
         }
     }
 }

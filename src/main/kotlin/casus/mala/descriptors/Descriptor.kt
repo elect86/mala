@@ -123,7 +123,8 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
      *             (x,y,z,descriptor_dimension)
      */
     fun calculateFromQeOut(qeOutFile: File, kwargs: MutableMap<String, Any>,
-                           workingDirectory: Path = kwargs["workingDirectory"] as Path? ?: Path.of(".")): Any {
+                           workingDirectory: Path = kwargs["workingDirectory"] as Path? ?: Path.of("."))
+    : Pair<Array<Array<Array<FloatArray>>>, Int> {
         inFormatAse = "espresso-out"
         println("Calculating descriptors from $qeOutFile"/*min_verbosity=0*/)
         // We get the atomic information by using ASE.
@@ -385,7 +386,7 @@ abstract class Descriptor(parameters: Parameters) : PhysicalData(parameters) {
         }
     }
 
-    internal abstract fun calculate(outDir: Path, kwargs: Map<String, Any>): Number
+    internal abstract fun calculate(outDir: Path, kwargs: Map<String, Any>): Pair<Array<Array<Array<FloatArray>>>, Int>
 
     companion object {
         infix fun from(params: Parameters): Descriptor = when (params.descriptors.type) {

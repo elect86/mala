@@ -64,32 +64,9 @@ fun extractComputeNp(lmp: Lammps, name: String, computeType: library_h.Style, re
         library_h.Type.scalar ->  ptr // No casting needed, lammps.py already works
         library_h.Type.array -> {
             val totalSize = arrayShape!!.prod()
-            val array = ptr.get(ValueLayout.ADDRESS, 0).reinterpret(totalSize.toLong()).toArray(ValueLayout.JAVA_DOUBLE)
-            TODO()
-//            buffer_ptr = ctypes.cast(
-//                ptr, ctypes.POINTER(ctypes.c_double * totalSize)
-//            )
-//            array_np = np.frombuffer(buffer_ptr.contents, dtype = float)
-//            array_np.shape = array_shape
-//            # If I directly
-//            return the descriptors, this sometimes leads
-//            # to errors
-//            , because presumably the python garbage collection
-//            # deallocates memory too quickly . This copy is more memory
-//            # hungry
-//            , and we might have to tackle this later on, but
-//            # for now it works.
-//            # I thought the transpose would take care of that
-//            , but apparently
-//            # it does not necessarily do that - so we have
-//            do go down
-//            # that route .# If we have to modify the data type, the copy becomes redundant,
-//            # since.astype always copies.if use_fp64
-//            :
-//            return array_np.copy()
-//            else:
-//            return
-//            array_np.astype(DEFAULT_NP_DATA_DTYPE)
+            val doubles = ptr.get(ValueLayout.ADDRESS, 0).reinterpret(totalSize.toLong() * Double.SIZE_BYTES)
+                    .toArray(ValueLayout.JAVA_DOUBLE)
+            if (useFp64) doubles else FloatArray(doubles.size) { doubles[it].toFloat() }
         }
         library_h.Type.sizeRows, library_h.Type.sizeCols -> // ptr is an int
             ptr.get(ValueLayout.JAVA_INT, 0L)

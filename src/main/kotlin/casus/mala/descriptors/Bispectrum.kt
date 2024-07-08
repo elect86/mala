@@ -58,9 +58,9 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
 
     //    fun convertUnits(array: NDArray): Nothing = TODO() // convertUnits (array, null)
 
-    override fun calculate(outDir: Path, kwargs: Map<String, Any>): Number = when {
+    override fun calculate(outDir: Path, kwargs: Map<String, Any>): Pair<Array<Array<Array<FloatArray>>>, Int> = when {
         //        else -> calculateKotlin(kwargs)
-        else -> calculateLammps(outDir, kwargs) as Number
+        else -> calculateLammps(outDir, kwargs)
         //        parameters.configuration.lammps
         //        if find_spec("lammps") is None:
         //        printout(
@@ -81,7 +81,7 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
      *         Creates a LAMMPS instance with appropriate call parameters and uses
      *         it for the calculation.
      */
-    private fun calculateLammps(outDir: Path, kwargs: Map<String, Any>): Number {
+    private fun calculateLammps(outDir: Path, kwargs: Map<String, Any>): Pair<Array<Array<Array<FloatArray>>>, Int> {
         // For version compatibility; older lammps versions(the serial version
         // we still use on some machines) have these constants as part of the
         // general LAMMPS import.
@@ -142,24 +142,32 @@ class Bispectrum(parameters: Parameters) : Descriptor(parameters) {
             parameters.configuration.mpi -> TODO()
             else -> {
                 // Extract data from LAMMPS calculation.
-                val snapDescriptorsNp = extractComputeNp(lmp,
-                                                         "bgrid",
-                                                         library_h.Style.global,
-                                                         library_h.Type.array,
-                                                         intArrayOf(nz, ny, nx, fingerprintLength),
-                                                         useFp64)
-                TODO()
-//                lmp.close()
-//
-//                # switch from x - fastest to z - fastest order (swaps 0th and 2nd
-//                # dimension)
-//                snapDescriptorsNp = snapDescriptorsNp.transpose([2, 1, 0, 3])
-//                # Copy the grid dimensions only at the end .
-//                self.grid_dimensions = [nx, ny, nz]
-//                if self.parameters.descriptors_contain_xyz:
-//                return snapDescriptorsNp, nx * ny * nz
-//                else:
-//                return snapDescriptorsNp[:, :, :, 3:], nx * ny * nz
+                val floats = extractComputeNp(lmp,
+                                               "bgrid",
+                                               library_h.Style.global,
+                                               library_h.Type.array,
+                                               intArrayOf(nz, ny, nx, fingerprintLength),
+                                               useFp64) as FloatArray
+
+                lmp.close()
+
+                // switch from x - fastest to z - fastest order (swaps 0th and 2nd dimension)
+                val snapDescriptorsNp =
+                    Array(nx) { x ->
+                        Array(ny) { y ->
+                            Array(nz) { z ->
+                                FloatArray(fingerprintLength) { floats[it + fingerprintLength * (x + nx * (y + ny * z))] }
+                            }
+                        }
+                    }
+
+                //                val snapDescriptorsNp = doubles.transpose([2, 1, 0, 3])
+                // Copy the grid dimensions only at the end.
+                gridDimensions = intArrayOf(nx, ny, nz)
+                when {
+                    parameters.descriptorsContainXyz -> snapDescriptorsNp to (nx * ny * nz)
+                    else -> TODO() // snapDescriptorsNp[:, :, :, 3:], nx * ny * nz
+                }
             }
         }
     }

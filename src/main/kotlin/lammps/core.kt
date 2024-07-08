@@ -37,19 +37,22 @@ import java.util.ArrayList
  */
 class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
 
-    // -------------------------------------------------------------------------
-    // create an instance of LAMMPS
+    var opened = true
 
-    val lmp: MemorySegment = Arena.ofConfined().use { offHeap ->
-        cmdArgs.add(0, "lammps")
-        // 4. Allocate a region of off-heap memory to store four pointers
-        val pointers = offHeap.allocate(ValueLayout.ADDRESS, cmdArgs.size.toLong())
-        // 5. Copy the strings from on-heap to off-heap
-        for (i in cmdArgs.indices) {
-            val cString = offHeap.allocateFrom(cmdArgs[i])
-            pointers.setAtIndex(ValueLayout.ADDRESS, i.toLong(), cString)
+    /** create an instance of LAMMPS */
+    var lmp: MemorySegment = when {
+        cmdArgs.isNotEmpty() -> Arena.ofConfined().use { offHeap ->
+            cmdArgs.add(0, "lammps")
+            // 4. Allocate a region of off-heap memory to store four pointers
+            val pointers = offHeap.allocate(ValueLayout.ADDRESS, cmdArgs.size.toLong())
+            // 5. Copy the strings from on-heap to off-heap
+            for (i in cmdArgs.indices) {
+                val cString = offHeap.allocateFrom(cmdArgs[i])
+                pointers.setAtIndex(ValueLayout.ADDRESS, i.toLong(), cString)
+            }
+            library_h.lammps_open_no_mpi(cmdArgs.size, pointers, MemorySegment.NULL)
         }
-        library_h.lammps_open_no_mpi(cmdArgs.size, pointers, MemorySegment.NULL)
+        else -> library_h.lammps_open_no_mpi(0, MemorySegment.NULL, MemorySegment.NULL)
     }
 
     /**
@@ -90,7 +93,7 @@ class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
      *     :return: requested data as scalar, pointer to 1d or 2d double array, or None
      *     :rtype: c_double, ctypes.POINTER(c_double), ctypes.POINTER(ctypes.POINTER(c_double)), or NoneType
      */
-    fun extractCompute(cId: String, cStyle: Style, cType: Type) = when(cType) {
+    fun extractCompute(cId: String, cStyle: Style, cType: Type) = when (cType) {
         Type.scalar -> TODO()
         Type.vector -> TODO()
         Type.array -> Arena.ofConfined().use {
@@ -98,5 +101,17 @@ class Lammps(name: String = "", cmdArgs: ArrayList<String> = arrayListOf()) {
         }
         Type.sizeCols -> TODO()
         else -> TODO()
+    }
+
+    /**
+     *     Explicitly delete a LAMMPS instance through the C-library interface.
+     *
+     *     This is a wrapper around the :cpp:func:`lammps_close` function of the C-library interface.
+     */
+    fun close() {
+        if (lmp.address() != 0L && opened)
+            library_h.lammps_close(lmp)
+        lmp = MemorySegment.NULL
+        opened = false
     }
 }

@@ -5,6 +5,7 @@ package lammps;
 import java.lang.invoke.*;
 import java.lang.foreign.*;
 import java.nio.ByteOrder;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
@@ -55,9 +56,7 @@ public class library_h {
         };
     }
 
-    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup(System.mapLibraryName("PycharmProjects/lammps/build/liblammps.so"), LIBRARY_ARENA)
-            .or(SymbolLookup.loaderLookup())
-            .or(Linker.nativeLinker().defaultLookup());
+    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup(Path.of("/home/elect/PycharmProjects/lammps/build/liblammps.so"), LIBRARY_ARENA);
 
     public static final ValueLayout.OfBoolean C_BOOL = ValueLayout.JAVA_BOOLEAN;
     public static final ValueLayout.OfByte C_CHAR = ValueLayout.JAVA_BYTE;
@@ -305,5 +304,8 @@ public class library_h {
            throw new AssertionError("should not reach here", ex$);
         }
     }
+
+    public enum Style { global, atom, local }
+    public enum Type { scalar, vector, array, sizeVector, sizeRows, sizeCols }
 }
 
